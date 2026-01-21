@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="kk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"="width=device-width, initial-scale=1.0">
+    <title>Сөзді тап - Kazakh Wordle</title>
+    <link href="https://fonts.googleapis.com/css2?family=Spectral:wght=700;800&family=IBM+Plex+Sans:wght=400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #1a1f2e;
+            --bg-tertiary: #252b3d;
+            --text-primary: #e8e6e3;
+            --text-secondary: #a8a5a0;
+            --accent-gold: #d4af37;
+            --accent-bronze: #cd7f32;
+            --correct: #6aaa64;
+            --present: #c9b458;
+            --absent: #3a3a3c;
+            --border: #3a3a3c;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, var(--bg-primary) 0%, #0d1219 50%, var(--bg-secondary) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(212, 175, 55, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(205, 127, 50, 0.06) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 1rem;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        header {
+            text-align: center;
+            padding: 1.5rem 0 2rem;
+            border-bottom: 2px solid var(--border);
+            margin-bottom: 1.5rem;
+            position: relative;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-family: 'Spectral', serif;
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-bronze));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .lang-btn {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .lang-btn:hover {
+            border-color: var(--accent-gold);
+            color: var(--text-primary);
+            transform: translateY(-2px);
+        }
+
+        .lang-btn.active {
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-bronze));
+            border-color: var(--accent-gold);
+            color: var(--bg-primary);
+            font-weight: 600;
+        }
+
+        .game-board {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            margin-bottom: 2rem;
+            animation: fadeIn 0.8s ease-out 0.2s both;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 0.5rem;
+            padding: 0;
+        }
+
+        .tile {
+            aspect-ratio: 1;
+            border: 2px solid var(--border);
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tile::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.05), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .tile:hover::before {
+            opacity: 1;
+        }
+
+        .tile.filled {
+            border-color: var(--text-secondary);
+            animation: pop 0.15s ease-in-out;
+        }
+
+        @keyframes pop {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .tile.correct {
+            background: var(--correct);
+            border-color: var(--correct);
+            color: white;
+        }
+
+        .tile.present {
+            background: var(--present);
+            border-color: var(--present);
+            color: white;
+        }
+
+        .tile.absent {
+            background: var(--absent);
+            border-color: var(--absent);
+            color: var(--text-secondary);
+        }
+
+        .tile.flip {
+            animation: flip 0.5s ease-in-out;
+        }
+
+        @keyframes flip {
+            0% { transform: rotateX(0); }
+            50% { transform: rotateX(90deg); }
+            100% { transform: rotateX(0); }
+        }
+
+        .keyboard {
+            margin-top: auto;
+            padding-bottom: 1rem;
+            animation: fadeIn 1s ease-out 0.4s both;
+        }
+
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+            gap: 0.25rem;
+            margin-bottom: 0.4rem;
+        }
+
+        .key {
+            min-width: 1.8rem;
+            height: 3.5rem;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-transform: uppercase;
+            position: relative;
+            overflow: hidden;
+            padding: 0.25rem;
+        }
+
+        .key::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+
+        .key:hover::after {
+            opacity: 1;
+        }
+
+        .key:active {
+            transform: scale(0.95);
+        }
+
+        .key.wide {
+            min-width: 5rem;
+            font-size: 0.7rem;
+        }
+
+        .key.correct {
+            background: var(--correct);
+            border-color: var(--correct);
+        }
+
+        .key.present {
+            background: var(--present);
+            border-color: var(--present);
+        }
+
+        .key.absent {
+            background: var(--absent);
+            border-color: var(--absent);
+            color: var(--text-secondary);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            animation: fadeInModal 0.3s ease-out;
+        }
+
+        @keyframes fadeInModal {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: var(--bg-secondary);
+            border: 2px solid var(--accent-gold);
+            border-radius: 16px;
+            padding: 2rem;
+            max-width: 450px;
+            width: 100%;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+            animation: slideUp 0.4s ease-out;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-title {
+            font-family: 'Spectral', serif;
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-bronze));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .word-display {
+            text-align: center;
+            margin: 2rem 0;
+            padding: 1.5rem;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .word-display .word {
+            font-size: 2rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+            color: var(--accent-gold);
+            margin-bottom: 0.5rem;
+        }
+
+        .definition {
+            margin-top: 1.5rem;
+            padding: 1.5rem;
+            background: var(--bg-primary);
+            border-radius: 12px;
+            border-left: 4px solid var(--accent-gold);
+        }
+
+        .definition-title {
+            font-weight: 600;
+            color: var(--accent-gold);
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .definition-text {
+            color: var(--text-primary);
+            line-height: 1.6;
+            font-size: 0.95rem;
+            margin-bottom: 1rem;
+        }
+
+        .translation {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .translation-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+
+        .examples {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .examples-title {
+            font-weight: 600;
+            color: var(--accent-gold);
+            margin-bottom: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .example {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            line-height: 1.5;
+            margin-bottom: 0.5rem;
+        }
+
+        .modal-actions {
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.875rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-gold), var(--accent-bronze));
+            color: var(--bg-primary);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(212, 175, 55, 0.3);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-gold);
+            transform: translateY(-2px);
+        }
+
+        .message {
+            text-align: center;
+            padding: 1rem;
+            margin: 1rem 0;
+            border-radius: 8px;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-weight: 500;
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            75% { transform: translateX(10px); }
+        }
+
+        .loading {
+            text-align: center;
+            padding: 1rem;
+            color: var(--text-secondary);
+        }
+
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s steps(4, end) infinite;
+        }
+
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+
+        .next-word-timer {
+            text-align: center;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .next-word-timer strong {
+            color: var(--accent-gold);
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .tile {
+                font-size: 1.5rem;
+            }
+
+            .key {
+                min-width: 1.5rem;
+                height: 3rem;
+                font-size: 0.65rem;
+            }
+
+            .key.wide {
+                min-width: 4rem;
+            }
+
+            .modal-content {
+                padding: 1.5rem;
+            }
+
+            .word-display .word {
+                font-size: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1 id="title">Сөзді тап</h1>
+            <p class="subtitle" id="subtitle">Қазақ Wordle</p>
+            <div class="controls">
+                <button class="lang-btn active" data-lang="kk">ҚАЗ</button>
+                <button class="lang-btn" data-lang="ru">РУС</button>
+                <button class="lang-btn" data-lang="en">ENG</button>
+            </div>
+        </header>
+
+        <div class="game-board" id="game-board">
+            <!-- Rows will be generated by JavaScript -->
+        </div>
+
+        <div class="keyboard" id="keyboard">
+            <!-- Keyboard will be generated by JavaScript -->
+        </div>
+    </div>
+
+    <div class="modal" id="result-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-title">Құттықтаймыз!</h2>
+                <p class="modal-subtitle" id="modal-subtitle"></p>
+            </div>
+            
+            <div class="word-display">
+                <div class="word" id="answer-word"></div>
+            </div>
+
+            <div class="definition" id="definition-container">
+                <div class="loading" id="loading-text">Анықтама жүктелуде</div>
+            </div>
+
+            <div id="next-word-info" class="next-word-timer" style="display: none;">
+                <div id="next-word-text"></div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="share-btn">Бөлісу</button>
+                <button class="btn btn-primary" id="new-game-btn" style="display: none;">Жаңа ойын</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Translations
+        const translations = {
+            kk: {
+                title: 'Сөзді тап',
+                subtitle: 'Қазақ Wordle',
+                congratulations: 'Құттықтаймыз!',
+                attempts: 'әрекет',
+                tryAgain: 'Өкінішке орай',
+                failed: 'Сәтсіз',
+                correctWord: 'Дұрыс сөз:',
+                definition: 'Анықтама',
+                translation: 'Аударма',
+                examples: 'Мысалдар',
+                share: 'Бөлісу',
+                newGame: 'Жаңа ойын',
+                loading: 'Анықтама жүктелуде',
+                notInWordList: 'Сөз тізімде жоқ',
+                notEnoughLetters: 'Әріптер жетіспейді',
+                fromSozdik: 'Көз: sozdik.kz',
+                nextWordIn: 'Келесі сөз',
+                alreadyPlayed: 'Сіз бүгінгі сөзді тапқансыз!'
+            },
+            ru: {
+                title: 'Угадай слово',
+                subtitle: 'Казахский Wordle',
+                congratulations: 'Поздравляем!',
+                attempts: 'попытка',
+                tryAgain: 'К сожалению',
+                failed: 'Не удалось',
+                correctWord: 'Правильное слово:',
+                definition: 'Определение',
+                translation: 'Перевод',
+                examples: 'Примеры',
+                share: 'Поделиться',
+                newGame: 'Новая игра',
+                loading: 'Загрузка определения',
+                notInWordList: 'Слова нет в списке',
+                notEnoughLetters: 'Недостаточно букв',
+                fromSozdik: 'Источник: sozdik.kz',
+                nextWordIn: 'Следующее слово через',
+                alreadyPlayed: 'Вы уже отгадали сегодняшнее слово!'
+            },
+            en: {
+                title: 'Guess the Word',
+                subtitle: 'Kazakh Wordle',
+                congratulations: 'Congratulations!',
+                attempts: 'attempt',
+                tryAgain: 'Unfortunately',
+                failed: 'Failed',
+                correctWord: 'Correct word:',
+                definition: 'Definition',
+                translation: 'Translation',
+                examples: 'Examples',
+                share: 'Share',
+                newGame: 'New Game',
+                loading: 'Loading definition',
+                notInWordList: 'Not in word list',
+                notEnoughLetters: 'Not enough letters',
+                fromSozdik: 'Source: sozdik.kz',
+                nextWordIn: 'Next word in',
+                alreadyPlayed: 'You have already guessed today\'s word!'
+            }
+        };
+
+        // Expanded Kazakh 5-letter words database
+        const kazakhWords = [
+            // Common nouns
+            'АДАММ', 'АЛТЫН', 'АСПАН', 'АҒАШ', 'АЙДЫҢ',
+            'БАЛЫҚ', 'БАҚЫТ', 'БАЛА', 'БАЛАА', 'БАУЫР',
+            'БІЛІМ', 'БІРІН', 'БҰЛАҚ', 'ДАЛА', 'ДӘРІР',
+            'ЕКІНШ', 'ЕЛІММ', 'ЖАҢАА', 'ЖАЗДЫ', 'ЖАЗЫҚ',
+            'ЖОЛДЫ', 'ЖҰЛДЫ', 'ЖЫЛДЫ', 'КАЛАМ', 'КІТАП',
+            'КӨЗЕК', 'КҮЗГІ', 'КҮМІС', 'КҮНДІ', 'МАЛДЫ',
+            'МҰҒІМ', 'НАНДЫ', 'НАУҚА', 'ОРМАН', 'ӨЗЕНН',
+            'ҚАЛАА', 'ҚАРЛЫ', 'ҚОЙЛЫ', 'ҚОРҒЫ', 'ҚЫСҚЫ',
+            'СӘЛЕМ', 'СУЫҚК', 'СУСЫН', 'ТАҒАМ', 'ТАСТЫ',
+            'ТАУЫҚ', 'ТЕМІР', 'ТӨРТІН', 'ТҮНГІ', 'ҮЙРЕК',
+            'ҮШІНШ', 'ҰҒЫЛМ', 'ШАЙДЫ',
+            // Additional common words
+            'ЖАЗАА', 'ЖЕТІМ', 'ЖЕҢІЛ', 'ЖОЛАА', 'ЖОҚТЫ',
+            'ЖҰМЫС', 'ЖҮРЕК', 'КЕЗЕҢ', 'КЕЛІН', 'КЕСЕЛ',
+            'КӨМЕК', 'КӨРІК', 'КҮШТІ', 'МАҒНА', 'МӘНЕР',
+            'МЕЙІР', 'ОТБАС', 'ӨЗГЕР', 'ӨЛЕҢ', 'ӨМІРР',
+            'ҚАБАТ', 'ҚАДАМ', 'ҚАЗАҚ', 'ҚАЙТА', 'ҚАЛАЙ',
+            'ҚАЛПЫ', 'ҚАМАЛ', 'ҚАНАТ', 'ҚАРАЙ', 'ҚАСТЫ',
+            'ҚАТАЛ', 'ҚАУІП', 'ҚОНАҚ', 'САБАҚ', 'САЯХТ',
+            'СЕЗІМ', 'СӨЗДІ', 'СҰЛУУ', 'ТАБЫС', 'ТАЛАП',
+            'ТАҢҒЫ', 'ТАПТЫ', 'ТАУАР', 'ТАУЛЫ', 'ТЕГІН',
+            'ТЕРЕҢ', 'ТҰРАҚ', 'ШЕКТІ', 'ШЫҒАР', 'ЫСТЫҚ',
+            'ЫСЫРП', 'ЫҢҒАЙ', 'ӘДЕМІ', 'ӘДІЛ', 'ӘКІММ',
+            'ӘЛЕММ', 'ӘРІПП', 'ӘСЕММ', 'ӘУЕЗЗ', 'ІШТЕЙ',
+            'ІШКІІ', 'ҰЗАҚҚ', 'ҰЛАНН', 'ҰЛТТЫҚ', 'ҰРАНН',
+            'ӨКІММ', 'ӨТКІР', 'ӨТПЕЛ', 'ӨЗАРА', 'ҒАЙЫП',
+            'ҒАЛАММ', 'ҒИМАР', 'ҢҒЫЛМ'
+        ];
+
+        // Kazakh keyboard layout
+        const kazakhKeyboard = [
+            ['Й', 'Ц', 'У', 'К', 'Е', 'Н', 'Г', 'Ш', 'Щ', 'З', 'Х'],
+            ['Ф', 'Ы', 'В', 'А', 'П', 'Р', 'О', 'Л', 'Д', 'Ж', 'Э'],
+            ['Я', 'Ч', 'С', 'М', 'И', 'Т', 'Ь', 'Б', 'Ю'],
+            ['Ә', 'Ғ', 'Қ', 'Ң', 'Ө', 'Ұ', 'Ү', 'Һ', 'І'],
+            ['ENTER', '⌫']
+        ];
+
+        // Game state
+        let currentLang = 'kk';
+        let targetWord = '';
+        let currentRow = 0;
+        let currentTile = 0;
+        let gameOver = false;
+        let guesses = [];
+        let keyboardState = {};
+
+        // Get today's date string
+        function getTodayString() {
+            const today = new Date();
+            return today.toISOString().split('T')[0];
+        }
+
+        // Get daily word (deterministic based on date)
+        function getDailyWord() {
+            const today = getTodayString();
+            let hash = 0;
+            for (let i = 0; i < today.length; i++) {
+                hash = ((hash << 5) - hash) + today.charCodeAt(i);
+                hash = hash & hash;
+            }
+            const index = Math.abs(hash) % kazakhWords.length;
+            return kazakhWords[index];
+        }
+
+        // Load game state
+        function loadGameState() {
+            try {
+                const saved = localStorage.getItem('kazakhWordleState');
+                if (saved) {
+                    const state = JSON.parse(saved);
+                    const today = getTodayString();
+                    
+                    if (state.date === today) {
+                        return state;
+                    }
+                }
+            } catch (e) {
+                console.error('Error loading state:', e);
+            }
+            return null;
+        }
+
+        // Save game state
+        function saveGameState() {
+            try {
+                const state = {
+                    date: getTodayString(),
+                    guesses: guesses,
+                    gameOver: gameOver,
+                    currentRow: currentRow,
+                    won: gameOver && guesses.length > 0 && guesses[guesses.length - 1] === targetWord,
+                    keyboardState: keyboardState
+                };
+                localStorage.setItem('kazakhWordleState', JSON.stringify(state));
+            } catch (e) {
+                console.error('Error saving state:', e);
+            }
+        }
+
+        // Restore game state
+        function restoreGameState(state) {
+            guesses = state.guesses || [];
+            gameOver = state.gameOver || false;
+            currentRow = state.currentRow || 0;
+            keyboardState = state.keyboardState || {};
+            
+            guesses.forEach((guess, rowIndex) => {
+                guess.split('').forEach((letter, colIndex) => {
+                    const tile = document.querySelector(`[data-row="${rowIndex}"][data-col="${colIndex}"]`);
+                    tile.textContent = letter;
+                    tile.classList.add('filled');
+                });
+                
+                applyGuessColors(guess, rowIndex, false);
+            });
+
+            Object.keys(keyboardState).forEach(letter => {
+                const key = document.querySelector(`[data-key="${letter}"]`);
+                if (key) {
+                    key.classList.add(keyboardState[letter]);
+                }
+            });
+
+            if (gameOver) {
+                setTimeout(() => {
+                    showResultModal(state.won);
+                }, 500);
+            }
+        }
+
+        // Initialize
+        function init() {
+            detectLanguage();
+            createBoard();
+            createKeyboard();
+            targetWord = getDailyWord();
+            
+            const savedState = loadGameState();
+            if (savedState) {
+                restoreGameState(savedState);
+            }
+            
+            setupEventListeners();
+            
+            console.log('Daily word:', targetWord);
+        }
+
+        function detectLanguage() {
+            const userLang = navigator.language || navigator.userLanguage;
+            if (userLang.startsWith('kk')) {
+                currentLang = 'kk';
+            } else if (userLang.startsWith('ru')) {
+                currentLang = 'ru';
+            } else {
+                currentLang = 'en';
+            }
+            updateLanguage();
+        }
+
+        function updateLanguage() {
+            const t = translations[currentLang];
+            document.getElementById('title').textContent = t.title;
+            document.getElementById('subtitle').textContent = t.subtitle;
+            
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.lang === currentLang);
+            });
+        }
+
+        function createBoard() {
+            const board = document.getElementById('game-board');
+            board.innerHTML = '';
+            
+            for (let i = 0; i < 6; i++) {
+                const row = document.createElement('div');
+                row.className = 'row';
+                row.dataset.row = i;
+                
+                for (let j = 0; j < 5; j++) {
+                    const tile = document.createElement('div');
+                    tile.className = 'tile';
+                    tile.dataset.row = i;
+                    tile.dataset.col = j;
+                    row.appendChild(tile);
+                }
+                
+                board.appendChild(row);
+            }
+        }
+
+        function createKeyboard() {
+            const keyboard = document.getElementById('keyboard');
+            keyboard.innerHTML = '';
+            
+            kazakhKeyboard.forEach(row => {
+                const keyboardRow = document.createElement('div');
+                keyboardRow.className = 'keyboard-row';
+                
+                row.forEach(key => {
+                    const keyBtn = document.createElement('button');
+                    keyBtn.className = 'key';
+                    if (key === 'ENTER' || key === '⌫') {
+                        keyBtn.classList.add('wide');
+                    }
+                    keyBtn.textContent = key;
+                    keyBtn.dataset.key = key;
+                    keyBtn.addEventListener('click', () => handleKeyPress(key));
+                    keyboardRow.appendChild(keyBtn);
+                });
+                
+                keyboard.appendChild(keyboardRow);
+            });
+        }
+
+        function setupEventListeners() {
+            document.querySelectorAll('.lang-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    currentLang = btn.dataset.lang;
+                    updateLanguage();
+                });
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (gameOver) return;
+                
+                const key = e.key.toUpperCase();
+                
+                if (key === 'ENTER') {
+                    handleKeyPress('ENTER');
+                } else if (key === 'BACKSPACE') {
+                    handleKeyPress('⌫');
+                } else if (/^[А-ЯӘІҢҒҮҰҚӨҺ]$/.test(key)) {
+                    handleKeyPress(key);
+                }
+            });
+
+            document.getElementById('share-btn').addEventListener('click', shareResults);
+        }
+
+        function handleKeyPress(key) {
+            if (gameOver) return;
+
+            if (key === '⌫') {
+                deleteLetter();
+            } else if (key === 'ENTER') {
+                submitGuess();
+            } else if (currentTile < 5) {
+                addLetter(key);
+            }
+        }
+
+        function addLetter(letter) {
+            const tile = document.querySelector(`[data-row="${currentRow}"][data-col="${currentTile}"]`);
+            tile.textContent = letter;
+            tile.classList.add('filled');
+            currentTile++;
+        }
+
+        function deleteLetter() {
+            if (currentTile > 0) {
+                currentTile--;
+                const tile = document.querySelector(`[data-row="${currentRow}"][data-col="${currentTile}"]`);
+                tile.textContent = '';
+                tile.classList.remove('filled');
+            }
+        }
+
+        function submitGuess() {
+            const t = translations[currentLang];
+            
+            if (currentTile < 5) {
+                showMessage(t.notEnoughLetters);
+                return;
+            }
+
+            const guess = getCurrentGuess();
+            
+            if (!isValidWord(guess)) {
+                showMessage(t.notInWordList);
+                shakeRow(currentRow);
+                return;
+            }
+
+            guesses.push(guess);
+            applyGuessColors(guess, currentRow, true);
+            
+            if (guess === targetWord) {
+                gameOver = true;
+                saveGameState();
+                setTimeout(() => showResultModal(true), 1500);
+            } else if (currentRow === 5) {
+                gameOver = true;
+                saveGameState();
+                setTimeout(() => showResultModal(false), 1500);
+            } else {
+                currentRow++;
+                currentTile = 0;
+                saveGameState();
+            }
+        }
+
+        function getCurrentGuess() {
+            let guess = '';
+            for (let i = 0; i < 5; i++) {
+                const tile = document.querySelector(`[data-row="${currentRow}"][data-col="${i}"]`);
+                guess += tile.textContent;
+            }
+            return guess;
+        }
+
+        function isValidWord(word) {
+            return /^[А-ЯӘІҢҒҮҰҚӨҺ]{5}$/.test(word);
+        }
+
+        function applyGuessColors(guess, rowIndex, animate) {
+            const targetLetters = targetWord.split('');
+            const guessLetters = guess.split('');
+            const letterCount = {};
+            
+            targetLetters.forEach(letter => {
+                letterCount[letter] = (letterCount[letter] || 0) + 1;
+            });
+
+            guessLetters.forEach((letter, i) => {
+                const tile = document.querySelector(`[data-row="${rowIndex}"][data-col="${i}"]`);
+                
+                const applyColor = () => {
+                    if (animate) tile.classList.add('flip');
+                    
+                    if (letter === targetLetters[i]) {
+                        tile.classList.add('correct');
+                        updateKeyboardKey(letter, 'correct');
+                        letterCount[letter]--;
+                    }
+                };
+                
+                if (animate) {
+                    setTimeout(applyColor, i * 300);
+                } else {
+                    applyColor();
+                }
+            });
+
+            guessLetters.forEach((letter, i) => {
+                const tile = document.querySelector(`[data-row="${rowIndex}"][data-col="${i}"]`);
+                
+                const applyColor = () => {
+                    if (letter !== targetLetters[i]) {
+                        if (targetLetters.includes(letter) && letterCount[letter] > 0) {
+                            tile.classList.add('present');
+                            updateKeyboardKey(letter, 'present');
+                            letterCount[letter]--;
+                        } else {
+                            tile.classList.add('absent');
+                            updateKeyboardKey(letter, 'absent');
+                        }
+                    }
+                };
+                
+                if (animate) {
+                    setTimeout(applyColor, i * 300);
+                } else {
+                    applyColor();
+                }
+            });
+        }
+
+        function updateKeyboardKey(letter, state) {
+            const key = document.querySelector(`[data-key="${letter}"]`);
+            if (!key) return;
+
+            const currentState = keyboardState[letter];
+            const priority = { 'correct': 3, 'present': 2, 'absent': 1 };
+            
+            if (!currentState || priority[state] > priority[currentState]) {
+                key.classList.remove('correct', 'present', 'absent');
+                key.classList.add(state);
+                keyboardState[letter] = state;
+            }
+        }
+
+        function shakeRow(row) {
+            const tiles = document.querySelectorAll(`[data-row="${row}"]`);
+            tiles.forEach(tile => {
+                tile.style.animation = 'shake 0.5s';
+                setTimeout(() => {
+                    tile.style.animation = '';
+                }, 500);
+            });
+        }
+
+        function showMessage(text) {
+            const existing = document.querySelector('.message');
+            if (existing) existing.remove();
+
+            const message = document.createElement('div');
+            message.className = 'message';
+            message.textContent = text;
+            document.querySelector('.container').insertBefore(message, document.getElementById('game-board'));
+            
+            setTimeout(() => message.remove(), 2000);
+        }
+
+        async function showResultModal(won) {
+            const t = translations[currentLang];
+            const modal = document.getElementById('result-modal');
+            
+            if (won) {
+                document.getElementById('modal-title').textContent = t.congratulations;
+                document.getElementById('modal-subtitle').textContent = `${currentRow + 1}/6 ${t.attempts}`;
+            } else {
+                document.getElementById('modal-title').textContent = t.tryAgain;
+                document.getElementById('modal-subtitle').textContent = `${t.correctWord} ${targetWord}`;
+            }
+            
+            document.getElementById('answer-word').textContent = targetWord;
+            document.getElementById('share-btn').textContent = t.share;
+            
+            modal.classList.add('active');
+            
+            // Show next word timer
+            updateNextWordTimer();
+            
+            // Fetch definition
+            await fetchDefinition(targetWord);
+        }
+
+        function updateNextWordTimer() {
+            const t = translations[currentLang];
+            const nextWordInfo = document.getElementById('next-word-info');
+            const nextWordText = document.getElementById('next-word-text');
+            
+            const now = new Date();
+            const tomorrow = new Date(now);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            tomorrow.setHours(0, 0, 0, 0);
+            
+            const diff = tomorrow - now;
+            const hours = Math.floor(diff / (1000 * 60 * 60));
+            const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+            
+            nextWordText.innerHTML = `${t.nextWordIn}: <strong>${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}</strong>`;
+            nextWordInfo.style.display = 'block';
+            
+            setTimeout(updateNextWordTimer, 1000);
+        }
+
+        async function fetchDefinition(word) {
+            const t = translations[currentLang];
+            const defContainer = document.getElementById('definition-container');
+            
+            defContainer.innerHTML = '<div class="loading">Анықтама жүктелуде</div>';
+            
+            try {
+                // Using a CORS proxy to fetch from sozdik.kz
+                const proxyUrl = 'https://api.allorigins.win/raw?url=';
+                const wordLower = word.toLowerCase();
+                const searchUrl = `https://sozdik.kz/ru/dictionary/translate/kk/ru/${encodeURIComponent(wordLower)}/`;
+                
+                const response = await fetch(proxyUrl + encodeURIComponent(searchUrl));
+                const htmlContent = await response.text();
+                
+                // Parse the HTML
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlContent, 'text/html');
+                
+                // Extract definition
+                const defElement = doc.querySelector('.translate_ru');
+                const definition = defElement ? defElement.textContent.trim() : null;
+                
+                // Extract translation
+                const transElement = doc.querySelector('.translate_kk');
+                const translation = transElement ? transElement.textContent.trim() : null;
+                
+                // Extract examples
+                const exampleElements = doc.querySelectorAll('.example');
+                const examples = Array.from(exampleElements).slice(0, 3).map(el => el.textContent.trim());
+                
+                // Display results
+                let html = `<div class="definition-title">${t.definition}</div>`;
+                
+                if (definition) {
+                    html += `<div class="definition-text">${definition}</div>`;
+                }
+                
+                if (translation) {
+                    html += `
+                        <div class="translation">
+                            <div class="definition-title">${t.translation}</div>
+                            <div class="translation-text">${translation}</div>
+                        </div>
+                    `;
+                }
+                
+                if (examples.length > 0) {
+                    html += `
+                        <div class="examples">
+                            <div class="examples-title">${t.examples}:</div>
+                            ${examples.map(ex => `<div class="example">• ${ex}</div>`).join('')}
+                        </div>
+                    `;
+                }
+                
+                html += `<div style="margin-top: 1rem; text-align: center; font-size: 0.8rem; color: var(--text-secondary);">${t.fromSozdik}</div>`;
+                
+                defContainer.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Error fetching definition:', error);
+                
+                // Fallback: show link to sozdik.kz
+                const wordLower = word.toLowerCase();
+                const searchUrl = `https://sozdik.kz/ru/dictionary/translate/kk/ru/${encodeURIComponent(wordLower)}/`;
+                
+                defContainer.innerHTML = `
+                    <div class="definition-title">${t.definition}</div>
+                    <div class="definition-text">
+                        ${t.fromSozdik}<br><br>
+                        <a href="${searchUrl}" target="_blank" style="color: var(--accent-gold); text-decoration: none; font-weight: 600;">
+                            Sozdik.kz сайтында ашу →
+                        </a>
+                    </div>
+                `;
+            }
+        }
+
+        function shareResults() {
+            const t = translations[currentLang];
+            let grid = `${t.title} ${currentRow + 1}/6\n\n`;
+            
+            guesses.forEach(guess => {
+                const targetLetters = targetWord.split('');
+                guess.split('').forEach((letter, i) => {
+                    if (letter === targetLetters[i]) {
+                        grid += '🟩';
+                    } else if (targetLetters.includes(letter)) {
+                        grid += '🟨';
+                    } else {
+                        grid += '⬛';
+                    }
+                });
+                grid += '\n';
+            });
+
+            if (navigator.share) {
+                navigator.share({ text: grid });
+            } else {
+                navigator.clipboard.writeText(grid);
+                showMessage('Clipboard-қа көшірілді!');
+            }
+        }
+
+        // Initialize
+        init();
+    </script>
+</body>
+</html>
